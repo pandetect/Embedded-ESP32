@@ -22,42 +22,32 @@ uint8_t isConnected;
 // BT 
 BluetoothSerial ESP_BT; //Object for Bluetooth
 WiFiClient clientTCP;
+
 //queues
 QueueHandle_t bluetoothQueue;
 
-void startCameraServer();
+//void startCameraServer();
 
 // TCP details 
-char* host = "192.168.1.39";
+char* host = "192.168.1.40";
 const uint16_t port = 3333;
 
 // functions 
 void process_image(camera_fb_t * fb ){
-  if( isConnected ){
-    clientTCP.connect(host , port );
+
+
     char *fbBuf = (char*)fb->buf;
     size_t fbLen = fb->len;
     uint32_t len = fbLen;
     char lenInChar[4];
     sprintf( lenInChar , "%lu" , len);
-//    clientTCP.write(lenInChar , 4  );
-    char*a = "aaaaa";
-//    clientTCP.write(fbBuf , fbLen);
-    int return_write = clientTCP.write(a , 6);
-    Serial.printf("I am connected write status %d", return_write); 
-    clientTCP.stop();
-  }
-    /*Serial.println(fbLen );
-    clientTCP.write( fbBuf , fbLen );
-    if( !clientTCP.connected()){
-        Serial.println("connection has been sabotaged");
-    }*/
-  
-  else{
-    Serial.println("muzooooo");
-  }
-  
+    int32_t return_write = clientTCP.write(lenInChar , 4  );
+    return_write += clientTCP.write(fbBuf , fbLen);
+    Serial.printf("Wrote to TCP: %d bytes\n", fbLen); 
+    //Serial.printf("Wrote %d bytes\n", return_write); 
+
 }
+
 esp_err_t camera_capture(){
     //acquire a frame
     camera_fb_t * fb = esp_camera_fb_get();
@@ -66,7 +56,7 @@ esp_err_t camera_capture(){
         return ESP_FAIL;
     }
     //replace this with your own function
-    Serial.println("going for processing image");
+    //Serial.println("going for processing image");
     process_image(fb);
     //return the frame buffer back to the driver for reuse
     esp_camera_fb_return(fb);
@@ -112,12 +102,12 @@ void setup() {
   config.pixel_format = PIXFORMAT_JPEG;
   //init with high specs to pre-allocate larger buffers
   if(psramFound()){
-    config.frame_size = FRAMESIZE_UXGA;
+    config.frame_size = FRAMESIZE_SXGA;
     config.jpeg_quality = 10;
     config.fb_count = 2;
   } else {
-    config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 12;
+    config.frame_size = FRAMESIZE_SXGA;
+    config.jpeg_quality = 0;
     config.fb_count = 1;
   }
   
@@ -157,7 +147,7 @@ isConnected = false;
   xTaskCreatePinnedToCore(
     TaskBluetooth
     ,  "TaskBluetooth"   // A name just for humans
-    ,  10 * 1024  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  5 * 1024  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
     ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL 
@@ -237,7 +227,8 @@ isConnected = false;
     uint8_t muzo =  EEPROM.read(0);
     Serial.println(muzo);*/
 
-   
+//   char a;
+//   Serial.print("%d", &a);
 }
 
 void loop()
@@ -322,7 +313,7 @@ void TaskBluetooth(void *pvParameters)  // This is a task.
         Serial.println("");
         Serial.println("WiFi connected");
       
-        startCameraServer();
+//        startCameraServer();
         Serial.print(WiFi.localIP());
         isConnected = true;
         
@@ -397,11 +388,51 @@ void TaskWifi(void *pvParameters)  // This is a task.
     uint32_t high = (num_after >> 32) % 0xFFFFFFFF;*/
     //Serial.print(high);
     //Serial.print(low);
-      delay(1000);
+//      delay(50);
       
     //
-    camera_capture();
-    
+    if( WiFi.status() == WL_CONNECTED){
+//      camera_capture();
+        if( isConnected ){
+            
+
+            if (clientTCP.connected())
+            {
+              
+
+              
+              
+              camera_capture();
+//              char b[4];
+//              clientTCP.write(b , 4 );
+//             char a[4000];
+//             clientTCP.write( a , 4000);
+            }
+            else 
+            {
+//              clientTCP.stop();
+              clientTCP.connect(host , port );
+            }
+        }
+          /*Serial.println(fbLen );
+          clientTCP.write( fbBuf , fbLen );
+          if( !clientTCP.connected()){
+              Serial.println("connection has been sabotaged");
+          }*/
+        
+        else{
+          Serial.println("muzooooo");
+        }
+    }
+    else {
+      Serial.println("Connection lost! reconnecting to wifi!");
+      WiFi.mode(WIFI_STA);
+      WiFi.begin((char*)ssid, (char*)password);
+      while (WiFi.status() != WL_CONNECTED) {
+            delay(500);
+            Serial.print(".");
+      }
+    }
     
   }
 }
