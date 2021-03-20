@@ -18,6 +18,9 @@ uint8_t password_size;
 uint8_t * ssid;
 uint8_t * password;
 uint8_t isConnected;
+uint8_t packet_counter;
+uint8_t TOTALPACKET = 5; 
+unsigned long millisPassed; 
 
 // BT 
 BluetoothSerial ESP_BT; //Object for Bluetooth
@@ -29,7 +32,7 @@ QueueHandle_t bluetoothQueue;
 //void startCameraServer();
 
 // TCP details 
-char* host = "192.168.1.40";
+char* host = "192.168.1.44";
 const uint16_t port = 3333;
 
 // functions 
@@ -220,6 +223,8 @@ isConnected = false;
         Serial.println("TCP connected ");
       }*/
     }
+    packet_counter = 0;
+    millisPassed = millis();
     /*Serial.println("iswificonnected");
     //Serial.println(isWifiConnected);
     EEPROM.write(0,0);
@@ -393,24 +398,27 @@ void TaskWifi(void *pvParameters)  // This is a task.
     //
     if( WiFi.status() == WL_CONNECTED){
 //      camera_capture();
-        if( isConnected ){
-            
-
+        if( isConnected ){            
             if (clientTCP.connected())
             {
-              
-
-              
-              
-              camera_capture();
-//              char b[4];
-//              clientTCP.write(b , 4 );
-//             char a[4000];
-//             clientTCP.write( a , 4000);
+              unsigned long tempSecond = millis();
+              if( tempSecond - millisPassed < 1000  ){ // inside the second
+                if ( TOTALPACKET > packet_counter ){ // check the total packets 
+                  camera_capture();
+                  packet_counter = packet_counter + 1;
+                }
+                             
+              }
+              else{
+                millisPassed = millis(); // set new time 
+                packet_counter = 0; 
+                
+              }
             }
             else 
             {
-//              clientTCP.stop();
+              millisPassed = millis();
+              packet_counter = 0;
               clientTCP.connect(host , port );
             }
         }
