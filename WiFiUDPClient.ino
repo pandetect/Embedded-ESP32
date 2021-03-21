@@ -67,7 +67,17 @@ esp_err_t camera_capture(){
 }
 
 
-
+String mac2String(byte ar[]){
+  String s;
+  for (byte i = 0; i < 6; ++i)
+  {
+    char buf[3];
+    sprintf(buf, "%2X", ar[i]);
+    s += buf;
+    if (i < 5) s += ':';
+  }
+  return s;
+}
 
 
 
@@ -79,7 +89,12 @@ void setup() {
   Serial.setDebugOutput(true);
   
   //bluetooth start
-   ESP_BT.begin("ESP32_DEVICE_CONTROL"); 
+  // concat esp32's nme with mac address 
+  byte mac[6];
+  WiFi.macAddress(mac); 
+  String macS  = mac2String(mac); 
+  //Serial.println(mac);
+  ESP_BT.begin( macS ); 
   //end bluetooth 
   
   camera_config_t config;
