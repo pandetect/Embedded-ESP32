@@ -94,7 +94,7 @@ void setup() {
   WiFi.macAddress(mac); 
   String macS  = mac2String(mac); 
   //Serial.println(mac);
-  ESP_BT.begin( macS ); 
+  ESP_BT.begin( "helloESP" ); 
   //end bluetooth 
   
   camera_config_t config;
