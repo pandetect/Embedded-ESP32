@@ -276,7 +276,7 @@ void TaskBluetooth(void *pvParameters)  // This is a task.
 
   for (;;) // A Task shall never return or exit.
   {
-    delay(1000);
+    delay(10);
     if (ESP_BT.available()) //Check if we receive anything from Bluetooth
   {
     int incoming = ESP_BT.read(); //Read what we recevive
@@ -388,6 +388,8 @@ void TaskBluetooth(void *pvParameters)  // This is a task.
     //Serial.print(high);
     //Serial.print(low);
   }
+  
+  
   }
 }
 
@@ -418,8 +420,9 @@ void TaskWifi(void *pvParameters)  // This is a task.
 //      delay(50);
       
     //
+    delay(1000);
+    Serial.println(ESP_BT.available());
     if( WiFi.status() == WL_CONNECTED){
-//      camera_capture();
         if( isConnected ){            
             if (clientTCP.connected())
             {
