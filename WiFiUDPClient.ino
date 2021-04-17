@@ -6,6 +6,8 @@
 #define CAM_PIN_RESET 32 
 #include "camera_pins.h"
 #define EEPROM_SIZE 128
+#define WIFI_TIMEOUT 30000
+#define FPS 15
 // define two tasks for Blink & AnalogRead
 void TaskBluetooth( void *pvParameters );
 void TaskWifi( void *pvParameters );
@@ -18,9 +20,6 @@ uint8_t password_size;
 uint8_t * ssid;
 uint8_t * password;
 uint8_t isConnected;
-uint8_t packet_counter;
-uint8_t TOTALPACKET = 5; 
-unsigned long millisPassed; 
 
 // BT 
 BluetoothSerial ESP_BT; //Object for Bluetooth
@@ -32,23 +31,48 @@ QueueHandle_t bluetoothQueue;
 //void startCameraServer();
 
 // TCP details 
-char* host = "192.168.1.44";
+char* host = "192.168.1.34";
 const uint16_t port = 3333;
 
+struct ESPPackageHeader {
+  uint64_t header_id;
+  uint32_t header_len;
+};
+
+struct ESPPackageHeader header;
+unsigned long before_time;
+// timeout stuff 
+unsigned long timeout_time;
+bool has_timeout_occured;
 // functions 
 void process_image(camera_fb_t * fb ){
+  has_timeout_occured = false;
+  header.header_id++;
+  header.header_len = fb->len;
 
+  char tmp[1];
 
-    char *fbBuf = (char*)fb->buf;
-    size_t fbLen = fb->len;
-    uint32_t len = fbLen;
-    char lenInChar[4];
-    sprintf( lenInChar , "%lu" , len);
-    int32_t return_write = clientTCP.write(lenInChar , 4  );
-    return_write += clientTCP.write(fbBuf , fbLen);
-    Serial.printf("Wrote to TCP: %d bytes\n", fbLen); 
-    //Serial.printf("Wrote %d bytes\n", return_write); 
+  for (size_t i = 0; i < 12; i++) {
+    Serial.printf("%d, ", ((uint8_t*) &header)[i]);
+  }
+  Serial.println();
+  timeout_time = millis();
+  while (clientTCP.read((uint8_t*)tmp, 1) != 1)
+  {
+    if(millis() - timeout_time >= WIFI_TIMEOUT){
+      has_timeout_occured = true;
+      return;
+    }
+  }
+  
+  clientTCP.write(((uint8_t*) &header), 12);
+  clientTCP.write((char*)fb->buf, header.header_len);
+  clientTCP.flush();
 
+  for (size_t i = 0; i < 12; i++) {
+    Serial.printf("%d, ", ((uint8_t*) &header)[i]);
+  }
+  Serial.println();
 }
 
 esp_err_t camera_capture(){
@@ -67,17 +91,7 @@ esp_err_t camera_capture(){
 }
 
 
-String mac2String(byte ar[]){
-  String s;
-  for (byte i = 0; i < 6; ++i)
-  {
-    char buf[3];
-    sprintf(buf, "%2X", ar[i]);
-    s += buf;
-    if (i < 5) s += ':';
-  }
-  return s;
-}
+
 
 
 
@@ -89,12 +103,7 @@ void setup() {
   Serial.setDebugOutput(true);
   
   //bluetooth start
-  // concat esp32's nme with mac address 
-  byte mac[6];
-  WiFi.macAddress(mac); 
-  String macS  = mac2String(mac); 
-  //Serial.println(mac);
-  ESP_BT.begin( macS ); 
+   ESP_BT.begin("ESP32_DEVICE_CONTROL"); 
   //end bluetooth 
   
   camera_config_t config;
@@ -223,11 +232,34 @@ isConnected = false;
       for( uint8_t i = 0; i < password_size; i++ ){
         Serial.print((char)password[i]);
       }
+      
+      byte connection_counter = 0;
+      isConnected = true; 
       while (WiFi.status() != WL_CONNECTED) {
             delay(500);
             Serial.print(".");
+            if(connection_counter == 20){
+              isConnected = false;
+              break;
+            }
+            connection_counter++;
       }
-      isConnected = true; 
+      Serial.println("aaaaaaaaaaaaaaaaaaaa");
+      WiFi.mode(WIFI_STA);
+      WiFi.begin("Bombar Lounge VIP", "ninjatomato"); // temporary
+      isConnected = true; //temporary
+      connection_counter = 0;
+      while (WiFi.status() != WL_CONNECTED) {
+            delay(500);
+            Serial.print(".");
+            if(connection_counter == 20){
+              isConnected = false;
+              break;
+            }
+            connection_counter++;
+      } //temporary
+
+      
       Serial.println("WiFi connected");
       for( int i = 0; i < 20; i++ ){
         uint8_t c = EEPROM.read(i);
@@ -238,8 +270,6 @@ isConnected = false;
         Serial.println("TCP connected ");
       }*/
     }
-    packet_counter = 0;
-    millisPassed = millis();
     /*Serial.println("iswificonnected");
     //Serial.println(isWifiConnected);
     EEPROM.write(0,0);
@@ -412,28 +442,24 @@ void TaskWifi(void *pvParameters)  // This is a task.
       
     //
     if( WiFi.status() == WL_CONNECTED){
-//      camera_capture();
-        if( isConnected ){            
+        if( isConnected ){
+            
+
             if (clientTCP.connected())
             {
-              unsigned long tempSecond = millis();
-              if( tempSecond - millisPassed < 1000  ){ // inside the second
-                if ( TOTALPACKET > packet_counter ){ // check the total packets 
-                  camera_capture();
-                  packet_counter = packet_counter + 1;
+ 
+              if( millis() - before_time > (1000 / FPS) ){\
+                camera_capture();
+                if( has_timeout_occured == true){
+                  clientTCP.stop();
                 }
-                             
+                before_time = millis();
               }
-              else{
-                millisPassed = millis(); // set new time 
-                packet_counter = 0; 
-                
-              }
+              
+
             }
             else 
             {
-              millisPassed = millis();
-              packet_counter = 0;
               clientTCP.connect(host , port );
             }
         }
