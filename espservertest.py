@@ -8,7 +8,6 @@ from array import array
 import numpy as np 
 from IPython.display import clear_output
 
-%matplotlib inline
 gg = []
 
 def show_video_frame(imageBytes):
@@ -26,7 +25,7 @@ try:
     plt.figure(figsize=(20, 20))
 
     
-    s.bind(('192.168.1.40', 3333))
+    s.bind(('192.168.1.21', 3333))
     # s.setblocking(False)
 
     # k  = 0 
@@ -65,13 +64,13 @@ try:
         max_framerate = 0
         min_framerate = 1000
         SECOND = 1
-        
+        count = 0
         while True:
             content = timeout_recv(client, 2**9, 5)
 
             if not content: break
 
-            if len(content) == 4:
+            if len(content) == 12:
                 num_frames += 1
                 after = time.time()
                 min_framerate = min(min_framerate, num_frames)

@@ -5,7 +5,6 @@
 #define CAMERA_MODEL_AI_THINKER
 #define CAM_PIN_RESET 32 
 #include "camera_pins.h"
-#include <string>
 #define EEPROM_SIZE 128
 #define WIFI_TIMEOUT 30000
 #define FPS 15
@@ -36,18 +35,6 @@ char* host = "192.168.1.34";
 const uint16_t port = 3333;
 //mac address 
 byte mac[6];
-// function to convert mac addres to string
-String mac2String(byte ar[]){
-  String s;
-  for (byte i = 0; i < 6; ++i)
-  {
-    char buf[3];
-    sprintf(buf, "%2X", ar[i]);
-    s += buf;
-    if (i < 5) s += ':';
-  }
-  return s;
-}
 
 struct ESPPackageHeader {
   uint64_t header_id;
@@ -117,6 +104,9 @@ void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   
+  //bluetooth start
+   ESP_BT.begin("ESP32_DEVICE_CONTROL"); 
+  //end bluetooth 
   
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -182,14 +172,7 @@ isConnected = false;
   
 // mac adress stuff
 WiFi.macAddress(mac);
-String macS = mac2String(mac);
-String esp32S = "ESP32";
-esp32S = esp32S + macS; 
-Serial.println(esp32S);
-//bluetooth start  
-ESP_BT.begin(esp32S); 
-//end bluetooth 
-
+  
   // Now set up two tasks to run independently.
   xTaskCreatePinnedToCore(
     TaskBluetooth
