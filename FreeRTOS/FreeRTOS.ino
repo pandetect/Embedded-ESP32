@@ -32,7 +32,7 @@ QueueHandle_t bluetoothQueue;
 //void startCameraServer();
 
 // TCP details 
-char* host = "192.168.1.34";
+char* host = "192.168.1.21";
 const uint16_t port = 3333;
 //mac address 
 byte mac[6];
@@ -257,35 +257,29 @@ ESP_BT.begin(esp32S);
       isConnected = true; 
       while (WiFi.status() != WL_CONNECTED) {
             delay(500);
-            Serial.print(".");
-            if(connection_counter == 20){
+            Serial.print("1.");
+            if(connection_counter == 50){
               isConnected = false;
               break;
             }
             connection_counter++;
       }
       Serial.println("aaaaaaaaaaaaaaaaaaaa");
+      Serial.println((char*)ssid);
+      Serial.println((char*)password);
       WiFi.mode(WIFI_STA);
-      WiFi.begin("Bombar Lounge VIP", "ninjatomato"); // temporary
-      isConnected = true; //temporary
       connection_counter = 0;
-      while (WiFi.status() != WL_CONNECTED) {
-            delay(500);
-            Serial.print(".");
-            if(connection_counter == 20){
-              isConnected = false;
-              break;
-            }
-            connection_counter++;
-      } //temporary
-
-      
       Serial.println("WiFi connected");
       for( int i = 0; i < 20; i++ ){
         uint8_t c = EEPROM.read(i);
         Serial.println(c);
       }
-
+      WiFi.begin("Shisha_Lounge" , "Pipstr01.");
+      while (WiFi.status() != WL_CONNECTED) {
+            delay(500);
+            Serial.print("waiting..");
+      }
+      isConnected = true; 
       /*if( clientTCP.connect(host, port)){
         Serial.println("TCP connected ");
       }*/
@@ -378,7 +372,7 @@ void TaskBluetooth(void *pvParameters)  // This is a task.
 
         while (WiFi.status() != WL_CONNECTED) {
           delay(500);
-          Serial.print(".");
+          Serial.print("2.");
         }
         Serial.println("");
         Serial.println("WiFi connected");
@@ -503,7 +497,7 @@ void TaskWifi(void *pvParameters)  // This is a task.
       WiFi.begin((char*)ssid, (char*)password);
       while (WiFi.status() != WL_CONNECTED) {
             delay(500);
-            Serial.print(".");
+            Serial.print("3.");
       }
     }
     
